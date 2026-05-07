@@ -96,27 +96,65 @@ router.post('/save', async (req, res) => {
     }
 });
 
-// Отправка результатов на email (заглушка)
+
+// Отправка результатов на email
 router.post('/send-email', async (req, res) => {
     try {
-        const { email, calculationId, results } = req.body;
+        const { email, calculationType, parameters, results } = req.body;
 
-        // Здесь будет реализация отправки email через nodemailer
-        // const info = await transporter.sendMail({
-        //   from: process.env.EMAIL_FROM,
-        //   to: email,
-        //   subject: 'Результаты расчета ипотеки',
-        //   html: generateEmailTemplate(results),
-        // });
+        // Валидация email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email || !emailRegex.test(email)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Пожалуйста, введите корректный email адрес'
+            });
+        }
 
-        res.json({
-            success: true,
-            message: 'Email будет отправлен в ближайшее время',
-            // messageId: info.messageId,
-        });
+        // Подготовка данных для email
+        const emailData = {
+            parameters: {
+                'Тип расчета': calculationType === 'mortgage' ? 'Ипотека' :
+                    calculationType === 'auto' ? 'Автокредит' :
+                        calculationType === 'consumer' ? 'Потребительский кредит' : 'Пенсионные накопления',
+                'Дата расчета': new Date().toLocaleString('ru-RU'),
+                ...parameters
+            },
+            results: results
+        };
+
+        // Отправка email
+        const emailResult = await sendCalculationEmail(email, emailData, calculationType);
+
+        if (emailResult.success) {
+            // Сохраняем факт отправки в базу данных
+            await Calculation.findOneAndUpdate(
+                { _id: req.body.calculationId },
+                {
+                    emailSent: true,
+                    emailSentAt: new Date(),
+                    emailAddress: email
+                }
+            );
+
+            res.json({
+                success: true,
+                message: 'Результаты успешно отправлены на ваш email',
+                messageId: emailResult.messageId
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: 'Ошибка при отправке email. Пожалуйста, попробуйте позже.'
+            });
+        }
+
     } catch (error) {
         console.error('Email sending error:', error);
-        res.status(500).json({ error: 'Ошибка при отправке email' });
+        res.status(500).json({
+            success: false,
+            error: 'Внутренняя ошибка сервера при отправке email'
+        });
     }
 });
 

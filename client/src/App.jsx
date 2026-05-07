@@ -1,27 +1,25 @@
-import React from "react";
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import Header from './';
-import HomePage from './';
-import MortgagePage from './';
-import AutoCreditPage from './';
-import PensionPage from './';
+
+// Импортируйте компоненты
+import Header from './components/Header';
+import HomePage from './pages/HomePage';
+import MortgagePage from './pages/MortgagePage';
+import AutoCreditPage from './pages/AutoCreditPage';
+import ConsumerCreditPage from './pages/ConsumerCreditPage';
+import PensionPage from './pages/PensionPage';
 
 const theme = createTheme({
     palette: {
-        primary: {
-            main: '#1E3A8A', // Корпоративный синий
-        },
-        secondary: {
-            main: '#10B981', // Корпоративный зеленый
-        },
-        background: {
-            default: '#F9FAFB',
-        },
-    },
-    typography: {
-        fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+        primary: { main: '#1E3A8A' },
+        secondary: { main: '#10B981' },
+        info: { main: '#0EA5E9' },
+        success: { main: '#10B981' },
+        warning: { main: '#F59E0B' },
+        error: { main: '#EF4444' },
+        background: { default: '#F9FAFB' },
     },
 });
 
@@ -30,16 +28,15 @@ function App() {
         <ThemeProvider theme={theme}>
             <CssBaseline />
             <Router>
-                                <div className="App">
+                <div className="App">
                     <Header />
-                    <main style={{padding: '20px', maxWidth: '1200px', margin: '0 auto'}}>
-                        <Routes>
-                            <Route path="/" element={<HomePage />} />
-                            <Route path="/mortgage" element={<MortgagePage />} />
-                            <Route path="/auto-credit" element={<AutoCreditPage />} />
-                            <Route path="/pension" element={<PensionPage />} />
-                        </Routes>
-                    </main>
+                    <Routes>
+                        <Route path="/" element={<HomePage />} />
+                        <Route path="/mortgage" element={<MortgagePage />} />
+                        <Route path="/auto-credit" element={<AutoCreditPage />} />
+                        <Route path="/consumer-credit" element={<ConsumerCreditPage />} />
+                        <Route path="/pension" element={<PensionPage />} />
+                    </Routes>
                 </div>
             </Router>
         </ThemeProvider>

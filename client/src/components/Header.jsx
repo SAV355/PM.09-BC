@@ -56,6 +56,13 @@ const Header = () => {
                         <Button
                             color="inherit"
                             component={RouterLink}
+                            to="/consumer-credit"
+                        >
+                            Потребительский
+                        </Button>
+                        <Button
+                            color="inherit"
+                            component={RouterLink}
                             to="/pension"
                         >
                             Пенсионные накопления
