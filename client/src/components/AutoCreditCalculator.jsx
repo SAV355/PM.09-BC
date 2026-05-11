@@ -11,6 +11,8 @@ import {
     Typography,
     Card,
     CardContent,
+    // Alert,
+    // CircularProgress,
 } from '@mui/material';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -19,9 +21,12 @@ import ScheduleIcon from '@mui/icons-material/Schedule';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import WarningIcon from '@mui/icons-material/Warning';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+// import SendIcon from '@mui/icons-material/Send';
+// import DownloadIcon from '@mui/icons-material/Download';
 import CalculatorLayout from './common/CalculatorLayout';
 import ResultCard from './common/ResultCard';
 import { formatCurrency } from '../utils/calculations';
+// import { emailAPI } from '../services/emailService';
 
 const AutoCreditCalculator = () => {
     const [formData, setFormData] = useState({
@@ -37,13 +42,16 @@ const AutoCreditCalculator = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-
+    
+//процентная ставка (зависит от типа авто/кредита)
     const getInterestRate = () => {
         const { carType, loanType } = formData;
         let baseRate = 3.5;
 
+//корректировака по (типу авто)
         if (carType === 'used') baseRate += 1.5;
         if (carType === 'premium') baseRate -= 0.5;
+//корректировака по (типу кредита)
         if (loanType === 'express') baseRate += 2;
         if (loanType === 'family') baseRate -= 0.3;
 
@@ -53,7 +61,7 @@ const AutoCreditCalculator = () => {
     const calculateAutoCredit = () => {
         const { carCost, initialPayment, termYears } = formData;
         const annualRate = getInterestRate();
-
+//Расчет типа кредита (аналогичен «ипотечному»)
         const loanAmount = carCost - initialPayment;
         const monthlyRate = annualRate / 12 / 100;
         const totalPayments = termYears * 12;

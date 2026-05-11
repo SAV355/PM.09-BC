@@ -11,6 +11,8 @@ import {
     Typography,
     Card,
     CardContent,
+    // Alert,
+    // CircularProgress,
 } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -18,9 +20,12 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import WarningIcon from '@mui/icons-material/Warning';
+// import SendIcon from '@mui/icons-material/Send';
+// import DownloadIcon from '@mui/icons-material/Download';
 import CalculatorLayout from './common/CalculatorLayout';
 import ResultCard from './common/ResultCard';
 import { formatCurrency } from '../utils/calculations';
+// import { emailAPI } from '../services/emailService';
 
 const MortgageCalculator = () => {
     const [formData, setFormData] = useState({
@@ -40,7 +45,7 @@ const MortgageCalculator = () => {
     // Получение процентной ставки
     const getInterestRate = () => {
         const { propertyType, loanType } = formData;
-        let baseRate = 9.6; // Базовая ставка из ТЗ
+        let baseRate = 9.6; // Базовая ставка
 
         // Корректировка ставки
         if (propertyType === 'secondary') baseRate += 0.5;
@@ -221,7 +226,7 @@ const MortgageCalculator = () => {
                 name="email"
                 type="email"
                 value={formData.email}
-                // onChange={handleInputChange}
+                onChange={handleInputChange}
                 margin="normal"
                 sx={{ mt: 3 }}
                 placeholder="your@email.com"

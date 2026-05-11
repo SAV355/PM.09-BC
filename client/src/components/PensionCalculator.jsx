@@ -11,6 +11,8 @@ import {
     Typography,
     Card,
     CardContent,
+    // Alert,
+    // CircularProgress,
 } from '@mui/material';
 import SavingsIcon from '@mui/icons-material/Savings';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -19,9 +21,12 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import EmojiPeopleIcon from '@mui/icons-material/EmojiPeople';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+// import SendIcon from '@mui/icons-material/Send';
+// import DownloadIcon from '@mui/icons-material/Download';
 import CalculatorLayout from './common/CalculatorLayout';
 import ResultCard from './common/ResultCard';
 import { formatCurrency } from '../utils/calculations';
+// import { emailAPI } from '../services/emailService';
 
 const PensionCalculator = () => {
     const [formData, setFormData] = useState({
@@ -40,6 +45,7 @@ const PensionCalculator = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
+    // Расчет пенсионных накоплений
     const calculatePension = () => {
         const {
             currentAge,
@@ -254,7 +260,7 @@ const PensionCalculator = () => {
                 name="email"
                 type="email"
                 value={formData.email}
-                // onChange={handleInputChange}
+                onChange={handleInputChange}
                 margin="normal"
                 sx={{ mt: 3 }}
                 placeholder="your@email.com"

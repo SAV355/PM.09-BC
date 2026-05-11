@@ -1,5 +1,11 @@
 import React from 'react';
-import { Card, CardContent, CardActions, Typography, Button, Box, } from '@mui/material';
+import { Card,
+    CardContent,
+    CardActions,
+    Typography,
+    Button,
+    Box,
+} from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 
 const CalculatorCard = ({ title, description, icon: Icon, link, color }) => {

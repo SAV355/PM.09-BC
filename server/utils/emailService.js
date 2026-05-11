@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Проверка подключения к email
-transporter.verify(function (error, success) {
+transporter.verify(function(error, success) {
     if (error) {
         console.log('Email connection error:', error);
     } else {
@@ -208,7 +208,7 @@ const sendCalculationEmail = async (toEmail, calculationData, type = 'mortgage')
 
 // Функция для сохранения логов отправки email (упрощенная версия)
 const saveEmailLog = async (logData) => {
-    // В реальном приложении здесь была бы запись в базу данных
+    // В дальнейшем возможна реализую здесь запись в базу данных
     console.log('Email log:', logData);
     return true;
 };

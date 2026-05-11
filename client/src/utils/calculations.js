@@ -93,7 +93,14 @@ export const calculateAutoCredit = (carCost, initialPayment, termYears, carType 
 };
 
 // Расчет пенсионных накоплений
-export const calculatePensionSavings = ( currentAge, retirementAge, currentSavings, monthlyContribution, annualReturn, inflationRate ) => {
+export const calculatePensionSavings = ( 
+    currentAge,
+    retirementAge,
+    currentSavings,
+    monthlyContribution,
+    annualReturn,
+    inflationRate
+) => {
     const yearsToRetirement = retirementAge - currentAge;
     const monthsToRetirement = yearsToRetirement * 12;
 
@@ -133,7 +140,7 @@ export const calculatePensionSavings = ( currentAge, retirementAge, currentSavin
 
 // Расчет государственной пенсии (упрощенный)
 export const calculateStatePension = (salary, yearsOfWork = 40) => {
-    // Упрощенная формула: 40% от средней зарплаты
+    // Упрощенная формула: 40% от «средней» ЗП
     const basePension = salary * 0.4 * 12;
 
     // Коэффициент за стаж (1% за каждый год сверх 15 лет)

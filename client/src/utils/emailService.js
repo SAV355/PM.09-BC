@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer');
-const fs = require('fs');
-const path = require('path');
+// const fs = require('fs');
+// const path = require('path');
 
 // Создаем транспорт для отправки email
 const transporter = nodemailer.createTransport({
@@ -46,13 +46,13 @@ const generateEmailTemplate = (data, type) => {
     const template = templates[type] || templates.mortgage;
 
     // Форматирование валюты
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('ru-RU', {
-            style: 'currency',
-            currency: 'RUB',
-            minimumFractionDigits: 0,
-        }).format(amount);
-    };
+    // const formatCurrency = (amount) => {
+    //     return new Intl.NumberFormat('ru-RU', {
+    //         style: 'currency',
+    //         currency: 'RUB',
+    //         minimumFractionDigits: 0,
+    //     }).format(amount);
+    // };
 
     return `
     <!DOCTYPE html>
