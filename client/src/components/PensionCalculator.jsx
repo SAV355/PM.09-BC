@@ -88,12 +88,23 @@ const PensionCalculator = () => {
         };
     };
 
+    //обработчик текстовых полей
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
+        const { name, value, type } = e.target;
+    //для Email'a и текстовых полей
+        if (type === 'email' || type === 'text' || name === 'pensionType' || name === 'investmentType') {
+            setFormData(prev => ({
             ...prev,
-            [name]: name === 'pensionType' || name === 'investmentType' ? value : parseFloat(value) || 0,
+            [name]: value, // сохр. емайл как строку
         }));
+        } else {
+    //для числовых полей
+            const numValue = parseFloat(value);
+            setFormData(prev => ({
+                ...prev,
+                [name]:isNaN(numValue) ? 0 :numValue,
+            }));
+        }
         setError('');
     };
 

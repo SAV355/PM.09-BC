@@ -78,15 +78,28 @@ const ConsumerCreditCalculator = () => {
         };
     };
 
+    // Обработчик текстовых полей (включая email)
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
+        const { name, value, type } = e.target;
+
+    // Для email и текстовых полей сохраняет строку как есть
+    if (type === 'email' || type === 'text' || name === 'loanPurpose' || name === 'loanType') {
         setFormData(prev => ({
             ...prev,
-            [name]: name === 'loanPurpose' || name === 'loanType' ? value : parseFloat(value) || 0,
+            [name]: value, // email сохраняем как строку
         }));
+    } else {
+    // Для числовых полей
+        const numValue = parseFloat(value);
+        setFormData(prev => ({
+            ...prev,
+            [name]: isNaN(numValue) ? 0 : numValue,
+        }));
+    }    
         setError('');
     };
 
+    // Обработчик слайдеров 
     const handleSliderChange = (name) => (e, value) => {
         setFormData(prev => ({
             ...prev,

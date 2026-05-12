@@ -1,239 +1,382 @@
-const nodemailer = require('nodemailer');
+import React, { useState } from 'react';
+import {
+  TextField,
+  Slider,
+  Box,
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Typography,
+  Card,
+  CardContent,
+} from '@mui/material';
+import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import WarningIcon from '@mui/icons-material/Warning';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import CalculatorLayout from './common/CalculatorLayout';
+import ResultCard from './common/ResultCard';
+import { formatCurrency } from '../utils/calculations';
 
-// Создаем транспорт для отправки email
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  secure: false, // true для 465, false для других портов
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const AutoCreditCalculator = () => {
+  const [formData, setFormData] = useState({
+    carCost: 1500000,
+    initialPayment: 300000,
+    termYears: 5,
+    email: '',
+    carType: 'new',
+    loanType: 'standard',
+  });
 
-// Проверка подключения к email
-transporter.verify(function(error, success) {
-  if (error) {
-    console.log('Email connection error:', error);
-  } else {
-    console.log('Email server is ready to send messages');
-  }
-});
+  const [results, setResults] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-// Функция для генерации HTML шаблона письма
-const generateEmailTemplate = (data, type) => {
-  const templates = {
-    mortgage: {
-      subject: 'Результаты расчета ипотеки - Банковский калькулятор',
-      title: 'Расчет ипотечного кредита'
-    },
-    auto: {
-      subject: 'Результаты расчета автокредита - Банковский калькулятор',
-      title: 'Расчет автокредита'
-    },
-    consumer: {
-      subject: 'Результаты расчета потребительского кредита - Банковский калькулятор',
-      title: 'Расчет потребительского кредита'
-    },
-    pension: {
-      subject: 'Результаты расчета пенсионных накоплений - Банковский калькулятор',
-      title: 'Расчет пенсионных накоплений'
+  const getInterestRate = () => {
+    const { carType, loanType } = formData;
+    let baseRate = 3.5;
+
+    if (carType === 'used') baseRate += 1.5;
+    if (carType === 'premium') baseRate -= 0.5;
+    if (loanType === 'express') baseRate += 2;
+    if (loanType === 'family') baseRate -= 0.3;
+
+    return baseRate;
+  };
+
+  const calculateAutoCredit = () => {
+    const { carCost, initialPayment, termYears } = formData;
+    const annualRate = getInterestRate();
+
+    const loanAmount = carCost - initialPayment;
+    const monthlyRate = annualRate / 12 / 100;
+    const totalPayments = termYears * 12;
+    const totalRate = Math.pow(1 + monthlyRate, totalPayments);
+    const monthlyPayment = loanAmount * monthlyRate * totalRate / (totalRate - 1);
+    const totalPayment = monthlyPayment * totalPayments;
+    const overpayment = totalPayment - loanAmount;
+    const insurance = carCost * 0.005 / 12;
+    const totalMonthlyPayment = monthlyPayment + insurance;
+    const requiredIncome = totalMonthlyPayment * 2;
+
+    return {
+      loanAmount,
+      monthlyPayment: Math.round(monthlyPayment),
+      totalPayment: Math.round(totalPayment),
+      overpayment: Math.round(overpayment),
+      insurance: Math.round(insurance),
+      totalMonthlyPayment: Math.round(totalMonthlyPayment),
+      requiredIncome: Math.round(requiredIncome),
+      annualRate,
+      termYears,
+    };
+  };
+
+  // Исправленный обработчик текстовых полей и селектов
+  const handleInputChange = (e) => {
+    const { name, value, type } = e.target;
+
+    // Для email, текстовых полей и селектов сохраняем строку как есть
+    if (type === 'email' || type === 'text' || name === 'carType' || name === 'loanType') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    } else {
+      // Для числовых полей
+      const numValue = parseFloat(value);
+      setFormData(prev => ({
+        ...prev,
+        [name]: isNaN(numValue) ? 0 : numValue,
+      }));
+    }
+    setError('');
+  };
+
+  const handleSliderChange = (name) => (e, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+    setError('');
+  };
+
+  const handleCalculate = () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const loanAmount = formData.carCost - formData.initialPayment;
+      if (loanAmount <= 0) {
+        setError('Сумма кредита должна быть больше 0');
+        return;
+      }
+
+      const calculation = calculateAutoCredit();
+      setResults(calculation);
+      setSuccess('Расчет автокредита выполнен успешно!');
+    } catch (err) {
+      setError('Ошибка при расчете: ' + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const template = templates[type] || templates.mortgage;
-  
-  // Убрана неиспользуемая функция formatCurrency внутри generateEmailTemplate
-  // Форматирование валюты будет происходить на клиенте перед отправкой
+  const handleSendEmail = () => {
+    if (!formData.email) {
+      setError('Введите email для отправки результатов');
+      return;
+    }
+    setSuccess('Результаты отправлены на email!');
+  };
 
-  return `
-    <!DOCTYPE html>
-    <html lang="ru">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${template.subject}</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          line-height: 1.6;
-          color: #333;
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 20px;
-        }
-        .header {
-          background-color: #1E3A8A;
-          color: white;
-          padding: 20px;
-          text-align: center;
-          border-radius: 10px 10px 0 0;
-        }
-        .content {
-          background-color: #f9f9f9;
-          padding: 20px;
-          border-radius: 0 0 10px 10px;
-        }
-        .result-card {
-          background-color: white;
-          border: 1px solid #ddd;
-          border-radius: 5px;
-          padding: 15px;
-          margin: 10px 0;
-        }
-        .result-value {
-          font-size: 24px;
-          font-weight: bold;
-          color: #1E3A8A;
-        }
-        .footer {
-          text-align: center;
-          margin-top: 30px;
-          padding-top: 20px;
-          border-top: 1px solid #ddd;
-          color: #666;
-          font-size: 12px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin: 20px 0;
-        }
-        th, td {
-          border: 1px solid #ddd;
-          padding: 10px;
-          text-align: left;
-        }
-        th {
-          background-color: #f2f2f2;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>${template.title}</h1>
-        <p>Банковский калькулятор</p>
-      </div>
-      
-      <div class="content">
-        <p>Уважаемый пользователь,</p>
-        <p>Вы запрашивали расчет ${template.title.toLowerCase()}. Ниже представлены результаты:</p>
-        
-        <div class="result-card">
-          <h3>Основные параметры:</h3>
-          <table>
-            ${Object.entries(data.parameters || {}).map(([key, value]) => `
-              <tr>
-                <td><strong>${key}</strong></td>
-                <td>${value}</td>
-              </tr>
-            `).join('')}
-          </table>
-        </div>
-        
-        <div class="result-card">
-          <h3>Результаты расчета:</h3>
-          <table>
-            ${Object.entries(data.results || {}).map(([key, value]) => `
-              <tr>
-                <td><strong>${key}</strong></td>
-                <td class="result-value">${value}</td>
-              </tr>
-            `).join('')}
-          </table>
-        </div>
-        
-        <p>Данный расчет является предварительным. Для получения точных условий кредита обращайтесь в отделение банка.</p>
-        
-        <div class="footer">
-          <p>Это письмо сформировано автоматически. Пожалуйста, не отвечайте на него.</p>
-          <p>© ${new Date().getFullYear()} Банковский калькулятор. Все права защищены.</p>
-          <p>Контакты: ${process.env.EMAIL_ADMIN || 'support@bank-calculator.ru'}</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const handleSavePDF = () => {
+    setSuccess('PDF документ сгенерирован и сохранен!');
+  };
+
+  const loanAmount = formData.carCost - formData.initialPayment;
+  const annualRate = getInterestRate();
+
+  const leftPanel = (
+    <>
+      <FormControl fullWidth margin="normal">
+        <InputLabel>Тип автомобиля</InputLabel>
+        <Select
+          name="carType"
+          value={formData.carType}
+          onChange={handleInputChange}
+          label="Тип автомобиля"
+        >
+          <MenuItem value="new">Новый автомобиль</MenuItem>
+          <MenuItem value="used">Автомобиль с пробегом</MenuItem>
+          <MenuItem value="premium">Премиальный автомобиль</MenuItem>
+        </Select>
+      </FormControl>
+
+      <FormControl fullWidth margin="normal">
+        <InputLabel>Тип кредита</InputLabel>
+        <Select
+          name="loanType"
+          value={formData.loanType}
+          onChange={handleInputChange}
+          label="Тип кредита"
+        >
+          <MenuItem value="standard">Стандартный</MenuItem>
+          <MenuItem value="express">Экспресс-кредит</MenuItem>
+          <MenuItem value="family">Семейный кредит</MenuItem>
+        </Select>
+      </FormControl>
+
+      <TextField
+        fullWidth
+        label="Стоимость автомобиля, ₽"
+        name="carCost"
+        type="number"
+        value={formData.carCost}
+        onChange={handleInputChange}
+        margin="normal"
+        InputProps={{ inputProps: { min: 500000, step: 50000 } }}
+      />
+
+      <Box sx={{ mt: 3 }}>
+        <Typography gutterBottom>
+          Первоначальный взнос: {formatCurrency(formData.initialPayment)}
+        </Typography>
+        <Slider
+          value={formData.initialPayment}
+          onChange={handleSliderChange('initialPayment')}
+          min={0}
+          max={formData.carCost}
+          step={50000}
+          valueLabelDisplay="auto"
+          valueLabelFormat={(value) => formatCurrency(value)}
+        />
+      </Box>
+
+      <Box sx={{ mt: 4 }}>
+        <Typography gutterBottom>
+          Срок кредита: {formData.termYears} лет
+        </Typography>
+        <Slider
+          value={formData.termYears}
+          onChange={handleSliderChange('termYears')}
+          min={1}
+          max={7}
+          valueLabelDisplay="auto"
+          valueLabelFormat={(value) => `${value} лет`}
+        />
+      </Box>
+
+      <TextField
+        fullWidth
+        label="Email для отправки результатов"
+        name="email"
+        type="email"
+        value={formData.email}
+        onChange={handleInputChange}
+        margin="normal"
+        sx={{ mt: 3 }}
+        placeholder="your@email.com"
+      />
+    </>
+  );
+
+  const rightPanel = (
+    <>
+      <Card sx={{ bgcolor: 'grey.50', mb: 3 }}>
+        <CardContent>
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <Typography variant="body2" color="text.secondary">
+                Сумма кредита:
+              </Typography>
+              <Typography variant="h6">
+                {formatCurrency(loanAmount)}
+              </Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="body2" color="text.secondary">
+                Процентная ставка:
+              </Typography>
+              <Typography variant="h6" color="secondary.main">
+                {annualRate.toFixed(1)}% годовых
+              </Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="body2" color="text.secondary">
+                Тип авто:
+              </Typography>
+              <Typography variant="body1">
+                {formData.carType === 'new' ? 'Новый' :
+                  formData.carType === 'used' ? 'С пробегом' : 'Премиальный'}
+              </Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="body2" color="text.secondary">
+                Срок кредита:
+              </Typography>
+              <Typography variant="body1">
+                {formData.termYears} лет
+              </Typography>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {results && (
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <ResultCard
+              title="Ежемесячный платеж по кредиту"
+              value={formatCurrency(results.monthlyPayment)}
+              color="primary"
+              size="xlarge"
+              icon={AttachMoneyIcon}
+            />
+          </Grid>
+
+          <Grid item xs={6}>
+            <ResultCard
+              title="Страховка (КАСКО)"
+              value={formatCurrency(results.insurance)}
+              color="info"
+              size="medium"
+              icon={LocalShippingIcon}
+              subtitle="в месяц"
+            />
+          </Grid>
+
+          <Grid item xs={6}>
+            <ResultCard
+              title="Общий платеж"
+              value={formatCurrency(results.totalMonthlyPayment)}
+              color="success"
+              size="medium"
+              icon={AccountBalanceIcon}
+              subtitle="в месяц"
+            />
+          </Grid>
+
+          <Grid item xs={6}>
+            <ResultCard
+              title="Общая сумма выплат"
+              value={formatCurrency(results.totalPayment)}
+              color="warning"
+              size="small"
+              icon={TrendingUpIcon}
+            />
+          </Grid>
+
+          <Grid item xs={6}>
+            <ResultCard
+              title="Переплата"
+              value={formatCurrency(results.overpayment)}
+              color="error"
+              size="small"
+              icon={WarningIcon}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <ResultCard
+              title="Необходимый доход"
+              value={formatCurrency(results.requiredIncome)}
+              color="secondary"
+              size="medium"
+              subtitle="общий платеж × 2"
+              icon={ScheduleIcon}
+            />
+          </Grid>
+        </Grid>
+      )}
+
+      {!results && (
+        <Box sx={{
+          height: 300,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          border: '2px dashed',
+          borderColor: 'divider',
+          borderRadius: 2,
+          p: 4,
+          textAlign: 'center'
+        }}>
+          <DirectionsCarIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            Введите параметры автокредита
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Укажите стоимость авто, первоначальный взнос и срок кредита для расчета
+          </Typography>
+        </Box>
+      )}
+    </>
+  );
+
+  return (
+    <CalculatorLayout
+      title="Калькулятор автокредита"
+      icon={DirectionsCarIcon}
+      color="#10B981"
+      leftPanel={leftPanel}
+      rightPanel={rightPanel}
+      error={error}
+      success={success}
+      loading={loading}
+      onCalculate={handleCalculate}
+      onSendEmail={handleSendEmail}
+      onSavePDF={handleSavePDF}
+      canCalculate={loanAmount > 0}
+    />
+  );
 };
 
-// Функция отправки email
-const sendCalculationEmail = async (toEmail, calculationData, type = 'mortgage') => {
-  try {
-    const htmlContent = generateEmailTemplate(calculationData, type);
-    
-    const mailOptions = {
-      from: `"Банковский калькулятор" <${process.env.EMAIL_FROM}>`,
-      to: toEmail,
-      subject: calculationData.subject || `Результаты расчета - ${type}`,
-      html: htmlContent,
-      text: `Результаты расчета ${type}. Проверьте HTML версию письма.`,
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    
-    // Логируем успешную отправку
-    await saveEmailLog({
-      to: toEmail,
-      subject: mailOptions.subject,
-      messageId: info.messageId,
-      type: type,
-      status: 'sent',
-      sentAt: new Date(),
-    });
-
-    return {
-      success: true,
-      messageId: info.messageId,
-      message: 'Email отправлен успешно'
-    };
-
-  } catch (error) {
-    console.error('Error sending email:', error);
-    
-    // Логируем ошибку
-    await saveEmailLog({
-      to: toEmail,
-      type: type,
-      status: 'error',
-      error: error.message,
-      sentAt: new Date(),
-    });
-
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-};
-
-// Функция для сохранения логов отправки email (упрощенная версия)
-const saveEmailLog = async (logData) => {
-  // В реальном приложении здесь была бы запись в базу данных
-  console.log('Email log:', logData);
-  return true;
-};
-
-// Функция для отправки уведомления администратору
-const sendAdminNotification = async (subject, message) => {
-  try {
-    const mailOptions = {
-      from: process.env.EMAIL_FROM,
-      to: process.env.EMAIL_ADMIN,
-      subject: subject,
-      text: message,
-      html: `<p>${message}</p>`
-    };
-
-    await transporter.sendMail(mailOptions);
-    return true;
-  } catch (error) {
-    console.error('Error sending admin notification:', error);
-    return false;
-  }
-};
-
-module.exports = {
-  sendCalculationEmail,
-  sendAdminNotification,
-  transporter
-};
+export default AutoCreditCalculator;

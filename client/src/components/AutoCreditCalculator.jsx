@@ -86,15 +86,28 @@ const AutoCreditCalculator = () => {
         };
     };
 
+    //обработчик текстовых полей
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: name === 'carType' || name === 'loanType' ? value : parseFloat(value) || 0,
+        const { name, value, type } = e.target;
+
+    //для Email'a и текстовых полей
+        if  (type === 'email' || type === 'text' || name === 'carType' || name === 'loanType') {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value, // сохр. емайл как строку
         }));
+        } else {
+    //для числовых полей
+            const numValue = parseFloat(value);
+            setFormData(prev => ({
+                ...prev,
+                [name]: isNaN(numValue) ? 0 : numValue,
+            }));
+        }
         setError('');
     };
 
+    //обработчик слайдеров
     const handleSliderChange = (name) => (e, value) => {
         setFormData(prev => ({
             ...prev,
