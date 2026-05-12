@@ -1,131 +1,120 @@
 const express = require('express');
 const router = express.Router();
 const Calculation = require('../models/Calculation');
+const CalculatorConfig = require('../models/CalculatorConfig');
+const adminAuth = require('../middleware/adminAuth');
 
-// Middleware для проверки администратора (заглушка)
-const isAdmin = (req, res, next) => {
-    // В реальном приложении здесь была бы проверка JWT токена
-    const adminToken = req.headers['x-admin-token'];
+// Все маршруты защищены adminAuth
+router.use(adminAuth);
 
-    if (adminToken === process.env.ADMIN_TOKEN || process.env.NODE_ENV === 'development') {
-        next();
-    } else {
-        res.status(403).json({ error: 'Доступ запрещен' });
-    }
-};
-
-router.use(isAdmin);
-
-// Получение всех расчетов
-router.get('/calculations', async (req, res) => {
+// --- Управление калькуляторами (CRUD) ---
+// Получить все калькуляторы
+router.get('/calculators', async (req, res) => {
     try {
-        const { type, page = 1, limit = 20, startDate, endDate } = req.query;
+        const calculators = await CalculatorConfig.find().sort('order');
+        res.json(calculators);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
-        const query = {};
+// Получить один калькулятор по ID
+router.get('/calculators/:id', async (req, res) => {
+    try {
+        const calc = await CalculatorConfig.findById(req.params.id);
+        if (!calc) return res.status(404).json({ error: 'Not found' });
+        res.json(calc);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
-        if (type) {
-            query.type = type;
-        }
+// Создать новый калькулятор
+router.post('/calculators', async (req, res) => {
+    try {
+        const newCalc = new CalculatorConfig(req.body);
+        await newCalc.save();
+        res.status(201).json(newCalc);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
 
-        if (startDate || endDate) {
-            query.createdAt = {};
-            if (startDate) query.createdAt.$gte = new Date(startDate);
-            if (endDate) query.createdAt.$lte = new Date(endDate);
-        }
+// Обновить калькулятор
+router.put('/calculators/:id', async (req, res) => {
+    try {
+        const updated = await CalculatorConfig.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+        if (!updated) return res.status(404).json({ error: 'Not found' });
+        res.json(updated);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
 
-        const skip = (page - 1) * limit;
+// Удалить калькулятор
+router.delete('/calculators/:id', async (req, res) => {
+    try {
+        const deleted = await CalculatorConfig.findByIdAndDelete(req.params.id);
+        if (!deleted) return res.status(404).json({ error: 'Not found' });
+        res.json({ message: 'Deleted' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
+// --- Просмотр и экспорт результатов расчётов ---
+router.get('/calculations', async (req, res) => {
+    const { type, startDate, endDate, page = 1, limit = 20 } = req.query;
+    const query = {};
+    if (type) query.type = type;
+    if (startDate || endDate) {
+        query.createdAt = {};
+        if (startDate) query.createdAt.$gte = new Date(startDate);
+        if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
+    const skip = (page - 1) * limit;
+    try {
         const calculations = await Calculation.find(query)
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(parseInt(limit))
-            .select('-__v');
-
+            .limit(parseInt(limit));
         const total = await Calculation.countDocuments(query);
-
         res.json({
-            success: true,
             data: calculations,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total,
-                pages: Math.ceil(total / limit),
-            },
+            pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) }
         });
-
-    } catch (error) {
-        console.error('Admin calculations error:', error);
-        res.status(500).json({ error: 'Ошибка при получении расчетов' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
-// Экспорт расчетов в CSV (заглушка)
-router.get('/export', async (req, res) => {
+// Экспорт в CSV
+router.get('/export-csv', async (req, res) => {
     try {
-        const { type, startDate, endDate } = req.query;
-
-        const query = {};
-        if (type) query.type = type;
-        if (startDate || endDate) {
-            query.createdAt = {};
-            if (startDate) query.createdAt.$gte = new Date(startDate);
-            if (endDate) query.createdAt.$lte = new Date(endDate);
+        const calculations = await Calculation.find().sort({ createdAt: -1 }).lean();
+        // Формируем CSV
+        const fields = ['_id', 'type', 'loanAmount', 'monthlyPayment', 'totalPayment', 'overpayment', 'userEmail', 'createdAt'];
+        const csvRows = [];
+        csvRows.push(fields.join(','));
+        for (const calc of calculations) {
+            const row = fields.map(f => JSON.stringify(calc[f] || '')).join(',');
+            csvRows.push(row);
         }
-
-        const calculations = await Calculation.find(query)
-            .sort({ createdAt: -1 })
-            .select('-_id -__v -calculationTime -ipAddress -userAgent');
-
-        // В реальном приложении здесь был бы генератор CSV
-        res.json({
-            success: true,
-            message: 'Экспорт в CSV будет реализован в будущем',
-            count: calculations.length,
-            sample: calculations.slice(0, 3),
-        });
-
-    } catch (error) {
-        res.status(500).json({ error: 'Ошибка при экспорте' });
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename=calculations.csv');
+        res.send(csvRows.join('\n'));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
-// Статистика
-router.get('/stats', async (req, res) => {
+// Экспорт в JSON
+router.get('/export-json', async (req, res) => {
     try {
-        const [totalCalculations, byType, dailyStats] = await Promise.all([
-            Calculation.countDocuments(),
-            Calculation.aggregate([
-                { $group: { _id: '$type', count: { $sum: 1 } } }
-            ]),
-            Calculation.aggregate([
-                {
-                    $group: {
-                        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-                        count: { $sum: 1 },
-                        avgLoanAmount: { $avg: '$loanAmount' },
-                    }
-                },
-                { $sort: { _id: -1 } },
-                { $limit: 7 },
-            ]),
-        ]);
-
-        res.json({
-            success: true,
-            data: {
-                totalCalculations,
-                byType: byType.reduce((acc, curr) => {
-                    acc[curr._id] = curr.count;
-                    return acc;
-                }, {}),
-                dailyStats,
-            },
-        });
-
-    } catch (error) {
-        console.error('Stats error:', error);
-        res.status(500).json({ error: 'Ошибка при получении статистики' });
+        const calculations = await Calculation.find().sort({ createdAt: -1 }).lean();
+        res.json(calculations);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

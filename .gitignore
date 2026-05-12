@@ -2,24 +2,27 @@
 node_modules/
 client/node_modules/
 server/node_modules/
+.pnpm-debug.log*
 
 # caches (игнорим папки тайнами, что бы их не коммитить :)) 
 **/.cache/
 client/node_modules/.cache/
+.eslintcache
 
 # env files (игнорим файлы окружения «secrets :) »)
 .env
 *.env
+!.env.example
 client/.env
 server/.env
-.env.*
 
 # build outputs (игнорим папки с выходными данными)
 dist/
 build/
-client/dist/
-client/build/
-server/dist/
+out/
+#client/dist/
+#client/build/
+#server/dist/
 
 # logs (Логи)
 npm-debug.log*
@@ -34,3 +37,4 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+*.swo

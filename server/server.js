@@ -30,6 +30,9 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/bank-calc
     .then(() => console.log('Connected to MongoDB'))
     .catch(err => console.error('MongoDB connection error:', err));
 
+const seedCalculators = require('./db/seedCalculators');
+seedCalculators().catch(console.error);
+
 // Routes
 app.use('/api/calculations', require('./routes/calculations'));
 app.use('/api/admin', require('./routes/admin'));

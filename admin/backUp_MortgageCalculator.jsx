@@ -114,7 +114,7 @@ const MortgageCalculator = () => {
             setResults(calculation);
             setSuccess('Расчет ипотеки выполнен успешно!');
 
-            // Сохраняем расчет на сервере
+    // Сохраняем расчет на сервере
             try {
                 const response = await calculationsAPI.mortgage({
                     ...formData,
