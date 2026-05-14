@@ -25,6 +25,7 @@ import LocalAtmIcon from '@mui/icons-material/LocalAtm';
 import CalculatorLayout from './common/CalculatorLayout';
 import ResultCard from './common/ResultCard';
 import { formatCurrency } from '../utils/calculations';
+import { generateCalculationPDF } from '../utils/generatePDF';
 // import { emailAPI } from '../services/emailService';
 
 const ConsumerCreditCalculator = () => {
@@ -82,20 +83,20 @@ const ConsumerCreditCalculator = () => {
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
 
-    // Для email и текстовых полей сохраняет строку как есть
-    if (type === 'email' || type === 'text' || name === 'loanPurpose' || name === 'loanType') {
-        setFormData(prev => ({
-            ...prev,
-            [name]: value, // email сохраняем как строку
-        }));
-    } else {
-    // Для числовых полей
-        const numValue = parseFloat(value);
-        setFormData(prev => ({
-            ...prev,
-            [name]: isNaN(numValue) ? 0 : numValue,
-        }));
-    }    
+        // Для email и текстовых полей сохраняет строку как есть
+        if (type === 'email' || type === 'text' || name === 'loanPurpose' || name === 'loanType') {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value, // email сохраняем как строку
+            }));
+        } else {
+            // Для числовых полей
+            const numValue = parseFloat(value);
+            setFormData(prev => ({
+                ...prev,
+                [name]: isNaN(numValue) ? 0 : numValue,
+            }));
+        }
         setError('');
     };
 
@@ -138,7 +139,17 @@ const ConsumerCreditCalculator = () => {
     };
 
     const handleSavePDF = () => {
-        setSuccess('PDF документ сгенерирован и сохранен!');
+        if (!results) {
+            setError('Сначала выполните расчёт');
+            return;
+        }
+        try {
+            generateCalculationPDF('consumer', formData, results, 'Калькулятор потребительского кредита');
+            setSuccess('PDF документ сгенерирован и сохранен!');
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err) {
+            setError('Ошибка при генерации PDF: ' + err.message);
+        }
     };
 
     const annualRate = getInterestRate();

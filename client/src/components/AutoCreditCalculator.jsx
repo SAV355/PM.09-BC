@@ -26,6 +26,7 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CalculatorLayout from './common/CalculatorLayout';
 import ResultCard from './common/ResultCard';
 import { formatCurrency } from '../utils/calculations';
+import { generateCalculationPDF } from '../utils/generatePDF';
 // import { emailAPI } from '../services/emailService';
 
 const AutoCreditCalculator = () => {
@@ -42,16 +43,16 @@ const AutoCreditCalculator = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    
-//процентная ставка (зависит от типа авто/кредита)
+
+    //процентная ставка (зависит от типа авто/кредита)
     const getInterestRate = () => {
         const { carType, loanType } = formData;
         let baseRate = 3.5;
 
-//корректировака по (типу авто)
+        //корректировака по (типу авто)
         if (carType === 'used') baseRate += 1.5;
         if (carType === 'premium') baseRate -= 0.5;
-//корректировака по (типу кредита)
+        //корректировака по (типу кредита)
         if (loanType === 'express') baseRate += 2;
         if (loanType === 'family') baseRate -= 0.3;
 
@@ -61,7 +62,7 @@ const AutoCreditCalculator = () => {
     const calculateAutoCredit = () => {
         const { carCost, initialPayment, termYears } = formData;
         const annualRate = getInterestRate();
-//Расчет типа кредита (аналогичен «ипотечному»)
+        //Расчет типа кредита (аналогичен «ипотечному»)
         const loanAmount = carCost - initialPayment;
         const monthlyRate = annualRate / 12 / 100;
         const totalPayments = termYears * 12;
@@ -90,14 +91,14 @@ const AutoCreditCalculator = () => {
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
 
-    //для Email'a и текстовых полей
-        if  (type === 'email' || type === 'text' || name === 'carType' || name === 'loanType') {
+        //для Email'a и текстовых полей
+        if (type === 'email' || type === 'text' || name === 'carType' || name === 'loanType') {
             setFormData(prev => ({
                 ...prev,
                 [name]: value, // сохр. емайл как строку
-        }));
+            }));
         } else {
-    //для числовых полей
+            //для числовых полей
             const numValue = parseFloat(value);
             setFormData(prev => ({
                 ...prev,
@@ -147,7 +148,17 @@ const AutoCreditCalculator = () => {
     };
 
     const handleSavePDF = () => {
-        setSuccess('PDF документ сгенерирован и сохранен!');
+        if (!results) {
+            setError('Сначала выполните расчёт');
+            return;
+        }
+        try {
+            generateCalculationPDF('auto', formData, results, 'Калькулятор Автокредита');
+            setSuccess('PDF документ сгенерирован и сохранен!');
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err) {
+            setError('Ошибка при генерации PDF: ' + err.message);
+        }
     };
 
     const loanAmount = formData.carCost - formData.initialPayment;

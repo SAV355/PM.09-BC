@@ -25,6 +25,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import CalculatorLayout from './common/CalculatorLayout';
 import ResultCard from './common/ResultCard';
 import { formatCurrency } from '../utils/calculations';
+import { generateCalculationPDF } from '../utils/generatePDF';
 // import { emailAPI } from '../services/emailService';
 
 const MortgageCalculator = () => {
@@ -42,12 +43,12 @@ const MortgageCalculator = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-// Процентная ставка (зависит от типа кредита)
+    // Процентная ставка (зависит от типа кредита)
     const getInterestRate = () => {
         const { propertyType, loanType } = formData;
         let baseRate = 9.6; // Базовая ставка
 
-// Корректировака по (типу недвижки)
+        // Корректировака по (типу недвижки)
         if (propertyType === 'secondary') baseRate += 0.5;
         if (propertyType === 'commercial') baseRate += 1.5;
         if (loanType === 'express') baseRate += 2;
@@ -58,7 +59,7 @@ const MortgageCalculator = () => {
     const calculateMortgage = () => {
         const { propertyCost, initialPayment, termYears } = formData;
         const annualRate = getInterestRate();
-//Расчет типа кредита 
+        //Расчет типа кредита 
         const loanAmount = propertyCost - initialPayment;
         const monthlyRate = annualRate / 12 / 100;
         const totalPayments = termYears * 12;
@@ -79,18 +80,18 @@ const MortgageCalculator = () => {
         };
     };
 
-// Обработчик текстовых полей (включая email)
+    // Обработчик текстовых полей (включая email)
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
-        
-    // Для email и текстовых полей сохраняет строку как есть
+
+        // Для email и текстовых полей сохраняет строку как есть
         if (type === 'email' || type === 'text' || name === 'propertyType' || name === 'loanType') {
             setFormData(prev => ({
                 ...prev,
                 [name]: value, // email сохраняем как строку, без parseFloat
             }));
         } else {
-    // Для числовых полей
+            // Для числовых полей
             const numValue = parseFloat(value);
             setFormData(prev => ({
                 ...prev,
@@ -132,7 +133,7 @@ const MortgageCalculator = () => {
     };
 
     const handleSendEmail = () => {
-    // Проверка на корректный email (простая проверка на @ и .)
+        // Проверка на корректный email (простая проверка на @ и .)
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!formData.email) {
             setError('Введите email для отправки результатов');
@@ -146,7 +147,17 @@ const MortgageCalculator = () => {
     };
 
     const handleSavePDF = () => {
-        setSuccess('PDF документ сгенерирован и сохранен!');
+        if (!results) {
+            setError('Сначала выполните расчёт');
+            return;
+        }
+        try {
+            generateCalculationPDF('mortgage', formData, results, 'Ипотечный калькулятор');
+            setSuccess('PDF документ сгенерирован и сохранен!');
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err) {
+            setError('Ошибка при генерации PDF: ' + err.message);
+        }
     };
 
     const loanAmount = formData.propertyCost - formData.initialPayment;
@@ -238,7 +249,7 @@ const MortgageCalculator = () => {
                 />
             </Box>
 
-    {/* Email для отправки */}
+            {/* Email для отправки */}
             <TextField
                 fullWidth
                 label="Email для отправки результатов"

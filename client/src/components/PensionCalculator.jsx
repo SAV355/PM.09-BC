@@ -26,6 +26,7 @@ import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import CalculatorLayout from './common/CalculatorLayout';
 import ResultCard from './common/ResultCard';
 import { formatCurrency } from '../utils/calculations';
+import { generateCalculationPDF } from '../utils/generatePDF';
 // import { emailAPI } from '../services/emailService';
 
 const PensionCalculator = () => {
@@ -91,18 +92,18 @@ const PensionCalculator = () => {
     //обработчик текстовых полей
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
-    //для Email'a и текстовых полей
+        //для Email'a и текстовых полей
         if (type === 'email' || type === 'text' || name === 'pensionType' || name === 'investmentType') {
             setFormData(prev => ({
-            ...prev,
-            [name]: value, // сохр. емайл как строку
-        }));
+                ...prev,
+                [name]: value, // сохр. емайл как строку
+            }));
         } else {
-    //для числовых полей
+            //для числовых полей
             const numValue = parseFloat(value);
             setFormData(prev => ({
                 ...prev,
-                [name]:isNaN(numValue) ? 0 :numValue,
+                [name]: isNaN(numValue) ? 0 : numValue,
             }));
         }
         setError('');
@@ -145,8 +146,18 @@ const PensionCalculator = () => {
         setSuccess('Результаты отправлены на email!');
     };
 
-    const handleSavePDF = () => {
-        setSuccess('PDF документ сгенерирован и сохранен!');
+    const handleSavePDF = async () => {
+        if (!results) {
+            setError('Сначала выполните расчёт');
+            return;
+        }
+        try {
+            await generateCalculationPDF('pension', formData, results, 'Пенсионный калькулятор');
+            setSuccess('PDF документ сгенерирован и сохранен!');
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err) {
+            setError('Ошибка при генерации PDF: ' + err.message);
+        }
     };
 
     // Левая панель - форма ввода

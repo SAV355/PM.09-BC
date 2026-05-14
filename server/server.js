@@ -3,19 +3,20 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
+const adminAuthRoutes = require('./routes/adminAuth');
 
 dotenv.config();
 
 const app = express();
 
-// Middleware
+// Middleware (промежуточный слой)
 app.use(cors({
     origin: process.env.CLIENT_URL || 'http://localhost:3000',
     credentials: true,
 }));
 app.use(express.json());
 
-// Rate limiting
+// Ограничение скорости
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit each IP to 100 requests per windowMs
@@ -33,11 +34,12 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/bank-calc
 const seedCalculators = require('./db/seedCalculators');
 seedCalculators().catch(console.error);
 
-// Routes
+// Пути
 app.use('/api/calculations', require('./routes/calculations'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/admin-auth', adminAuthRoutes);
 
-// Health check
+// Проверка здоровья
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
@@ -46,12 +48,12 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// 404 handler
+// 404 Обработчик
 app.use('*', (req, res) => {
     res.status(404).json({ error: 'Route not found' });
 });
 
-// Error handler
+// Error обработчика
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({

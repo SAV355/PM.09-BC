@@ -10,7 +10,7 @@ import MortgagePage from './pages/MortgagePage';
 import AutoCreditPage from './pages/AutoCreditPage';
 import ConsumerCreditPage from './pages/ConsumerCreditPage';
 import PensionPage from './pages/PensionPage';
-// Ипрорт Админа 
+// Импорт Админа 
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -29,7 +29,6 @@ const theme = createTheme({
     },
 });
 
-//компонент App:
 function App() {
     return (
         <ThemeProvider theme={theme}>
@@ -38,17 +37,23 @@ function App() {
                 <div className="App">
                     <Header />
                     <Routes>
+                        {/* Основные маршруты */}
                         <Route path="/" element={<HomePage />} />
                         <Route path="/mortgage" element={<MortgagePage />} />
                         <Route path="/auto-credit" element={<AutoCreditPage />} />
                         <Route path="/consumer-credit" element={<ConsumerCreditPage />} />
                         <Route path="/pension" element={<PensionPage />} />
-                        <Route path="/admin" element={<Navigate to="/admin/login" />} />
+                        
+                        {/* Админка — отдельные маршруты, вынесенные из-под Header (если нужно) */}
+                        {/* Маршрут логина без общей шапки */}
                         <Route path="/admin/login" element={<AdminLogin />} />
-                        <Route path="/admin" element={<AdminLayout />} />
-                        <Route path="dashboard" element={<AdminDashboard />} />
-                        <Route path="calculators" element={<CalculatorManager />} />
-                        <Route path="calculations" element={<CalculationsList  />} />
+                        {/* Родительский маршрут с Layout, внутри которого вложенные страницы */}
+                        <Route path="/admin" element={<AdminLayout />}>
+                            <Route index element={<Navigate to="/admin/dashboard" />} />
+                            <Route path="dashboard" element={<AdminDashboard />} />
+                            <Route path="calculators" element={<CalculatorManager />} />
+                            <Route path="calculations" element={<CalculationsList />} />
+                        </Route>
                     </Routes>
                 </div>
             </Router>
