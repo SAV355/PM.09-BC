@@ -26,7 +26,8 @@ import CalculatorLayout from './common/CalculatorLayout';
 import ResultCard from './common/ResultCard';
 import { formatCurrency } from '../utils/calculations';
 import { generateCalculationPDF } from '../utils/generatePDF';
-// import { emailAPI } from '../services/emailService';
+import { calculationsAPI } from '../services/api';
+import { emailAPI } from '../services/emailService';
 
 const MortgageCalculator = () => {
     const [formData, setFormData] = useState({
@@ -132,18 +133,37 @@ const MortgageCalculator = () => {
         }
     };
 
-    const handleSendEmail = () => {
-        // Проверка на корректный email (простая проверка на @ и .)
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!formData.email) {
+    const handleSendEmail = async () => {
+        const email = formData.email;
+        if (!email) {
             setError('Введите email для отправки результатов');
             return;
         }
-        if (!emailRegex.test(formData.email)) {
-            setError('Введите корректный email (например, name@domain.com)');
+        if (!emailAPI.validateEmail(email)) {
+            setError('Введите корректный email адрес');
             return;
         }
-        setSuccess('Результаты отправлены на email!');
+        if (!results) {
+            setError('Сначала выполните расчёт');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const emailData = emailAPI.formatEmailData('mortgage', formData, results, null);
+            const response = await calculationsAPI.sendEmail(emailData);
+            if (response.data.success) {
+                setSuccess('Результаты успешно отправлены на email!');
+                setTimeout(() => setSuccess(''), 5000);
+            } else {
+                setError(response.data.error || 'Ошибка при отправке email');
+            }
+        } catch (err) {
+            setError('Не удалось отправить email. Проверьте подключение к интернету.');
+            console.error('Send email error:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSavePDF = () => {

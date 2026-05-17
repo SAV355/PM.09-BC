@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Calculation = require('../models/Calculation');
+const { sendCalculationEmail } = require('../utils/emailService');
 
 // Формулы расчета (аналогичные фронтенду)
 const calculateMortgage = (propertyCost, initialPayment, annualRate, termYears) => {
@@ -99,11 +100,14 @@ router.post('/save', async (req, res) => {
 
 // Отправка результатов на email
 router.post('/send-email', async (req, res) => {
+    console.log('=== SEND EMAIL REQUEST ==='); /*проверка*/
+    console.log('Request body:', JSON.stringify(req.body, null, 2)); /*проверка*/
     try {
         const { email, calculationType, parameters, results } = req.body;
 
         // Валидация email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        console.log('Email validation:', { email, isValid: emailRegex.test(email) }); /*проверка*/
         if (!email || !emailRegex.test(email)) {
             return res.status(400).json({
                 success: false,
@@ -124,18 +128,20 @@ router.post('/send-email', async (req, res) => {
         };
 
         // Отправка email
+        console.log('Calling sendCalculationEmail...');
         const emailResult = await sendCalculationEmail(email, emailData, calculationType);
+        console.log('Email result:', emailResult);
 
         if (emailResult.success) {
             // Сохраняем факт отправки в базу данных
-            await Calculation.findOneAndUpdate(
+            try {
+                await Calculation.findOneAndUpdate(
                 { _id: req.body.calculationId },
-                {
-                    emailSent: true,
-                    emailSentAt: new Date(),
-                    emailAddress: email
-                }
+                { emailSent: true, emailSentAt: new Date(), emailAddress: email }
             );
+            } catch (dbErr) {
+                console.error('Failed to update calculation record:', dbErr.message);
+            }
 
             res.json({
                 success: true,

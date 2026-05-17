@@ -1,10 +1,16 @@
 const nodemailer = require('nodemailer');
+require('dotenv').config();
+
+console.log('EMAIL_USER:', process.env.EMAIL_USER);
+console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? '***' : 'undefined');
+console.log('EMAIL_HOST:', process.env.EMAIL_HOST);
+console.log('EMAIL_FROM:', process.env.EMAIL_FROM);
 
 // Создаем транспорт для отправки email
 const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
+    host: process.env.EMAIL_HOST,  
     port: process.env.EMAIL_PORT,
-    secure: false, // true для 465, false для других портов
+    secure: false, 
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -22,134 +28,75 @@ transporter.verify(function(error, success) {
 
 // Функция для генерации HTML шаблона письма
 const generateEmailTemplate = (data, type) => {
-    const templates = {
-        mortgage: {
-            subject: 'Результаты расчета ипотеки - Банковский калькулятор',
-            title: 'Расчет ипотечного кредита'
-        },
-        auto: {
-            subject: 'Результаты расчета автокредита - Банковский калькулятор',
-            title: 'Расчет автокредита'
-        },
-        consumer: {
-            subject: 'Результаты расчета потребительского кредита - Банковский калькулятор',
-            title: 'Расчет потребительского кредита'
-        },
-        pension: {
-            subject: 'Результаты расчета пенсионных накоплений - Банковский калькулятор',
-            title: 'Расчет пенсионных накоплений'
-        }
-    };
+  const currentDate = new Date().toLocaleString('ru-RU');
+  const titles = {
+    mortgage: { name: 'Ипотека', color: '#1E3A8A' },
+    auto: { name: 'Автокредит', color: '#10B981' },
+    consumer: { name: 'Потребительский кредит', color: '#8B5CF6' },
+    pension: { name: 'Пенсионные накопления', color: '#F59E0B' },
+  };
+  const current = titles[type] || titles.mortgage;
 
-    const template = templates[type] || templates.mortgage;
+  // Безопасное получение параметров и результатов
+  const parameters = data?.parameters || {};
+  const results = data?.results || {};
 
-    // Убрана неиспользуемая функция formatCurrency внутри generateEmailTemplate
-    // Форматирование валюты будет происходить на клиенте перед отправкой
+  // Функция для построения таблицы
+  const buildTable = (obj) => {
+    if (!obj || typeof obj !== 'object' || Object.keys(obj).length === 0) {
+      return '<p>Нет данных</p>';
+    }
+    let rows = '';
+    for (const [key, value] of Object.entries(obj)) {
+      // Экранируем HTML-символы, чтобы избежать XSS и поломки
+      const safeKey = String(key).replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+      const safeValue = String(value).replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+      rows += `<tr><td style="padding: 8px; border: 1px solid #ddd;">${safeKey}</td><td style="padding: 8px; border: 1px solid #ddd;">${safeValue}</td></tr>`;
+    }
+    return `<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">${rows}</table>`;
+  };
 
-    return `
+  return `
     <!DOCTYPE html>
-    <html lang="ru">
+    <html>
     <head>
       <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${template.subject}</title>
+      <title>Результаты расчёта ${current.name}</title>
       <style>
-        body {
-          font-family: Arial, sans-serif;
-          line-height: 1.6;
-          color: #333;
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 20px;
-        }
-        .header {
-          background-color: #1E3A8A;
-          color: white;
-          padding: 20px;
-          text-align: center;
-          border-radius: 10px 10px 0 0;
-        }
-        .content {
-          background-color: #f9f9f9;
-          padding: 20px;
-          border-radius: 0 0 10px 10px;
-        }
-        .result-card {
-          background-color: white;
-          border: 1px solid #ddd;
-          border-radius: 5px;
-          padding: 15px;
-          margin: 10px 0;
-        }
-        .result-value {
-          font-size: 24px;
-          font-weight: bold;
-          color: #1E3A8A;
-        }
-        .footer {
-          text-align: center;
-          margin-top: 30px;
-          padding-top: 20px;
-          border-top: 1px solid #ddd;
-          color: #666;
-          font-size: 12px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin: 20px 0;
-        }
-        th, td {
-          border: 1px solid #ddd;
-          padding: 10px;
-          text-align: left;
-        }
-        th {
-          background-color: #f2f2f2;
-        }
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: ${current.color}; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 10px 10px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: ${current.color}; color: white; }
+        .footer { font-size: 12px; color: #999; text-align: center; margin-top: 30px; }
       </style>
     </head>
     <body>
       <div class="header">
-        <h1>${template.title}</h1>
+        <h1>${current.name}</h1>
         <p>Банковский калькулятор</p>
       </div>
-      
       <div class="content">
-        <p>Уважаемый пользователь,</p>
-        <p>Вы запрашивали расчет ${template.title.toLowerCase()}. Ниже представлены результаты:</p>
-        
-        <div class="result-card">
-          <h3>Основные параметры:</h3>
-          <table>
-            ${Object.entries(data.parameters || {}).map(([key, value]) => `
-              <tr>
-                <td><strong>${key}</strong></td>
-                <td>${value}</td>
-              </tr>
-            `).join('')}
-          </table>
-        </div>
-        
-        <div class="result-card">
-          <h3>Результаты расчета:</h3>
-          <table>
-            ${Object.entries(data.results || {}).map(([key, value]) => `
-              <tr>
-                <td><strong>${key}</strong></td>
-                <td class="result-value">${value}</td>
-              </tr>
-            `).join('')}
-          </table>
-        </div>
-        
-        <p>Данный расчет является предварительным. Для получения точных условий кредита обращайтесь в отделение банка.</p>
-        
-        <div class="footer">
-          <p>Это письмо сформировано автоматически. Пожалуйста, не отвечайте на него.</p>
-          <p>© ${new Date().getFullYear()} Банковский калькулятор. Все права защищены.</p>
-          <p>Контакты: ${process.env.EMAIL_ADMIN || 'support@bank-calculator.ru'}</p>
-        </div>
+        <p>Дата расчёта: ${currentDate}</p>
+        <h2>Параметры расчёта</h2>
+        ${buildTable(parameters)}
+        <h2>Результаты расчёта</h2>
+        ${buildTable(results)}
+        <p>Данный расчёт является предварительным. Для получения точных условий обратитесь в банк.</p>
+      </div>
+      <div class="footer">
+        © ${new Date().getFullYear()} Банковский калькулятор
       </div>
     </body>
     </html>
@@ -158,52 +105,29 @@ const generateEmailTemplate = (data, type) => {
 
 // Функция отправки email
 const sendCalculationEmail = async (toEmail, calculationData, type = 'mortgage') => {
-    try {
-        const htmlContent = generateEmailTemplate(calculationData, type);
-
-        const mailOptions = {
-            from: `"Банковский калькулятор" <${process.env.EMAIL_FROM}>`,
-            to: toEmail,
-            subject: calculationData.subject || `Результаты расчета - ${type}`,
-            html: htmlContent,
-            text: `Результаты расчета ${type}. Проверьте HTML версию письма.`,
-        };
-
-        const info = await transporter.sendMail(mailOptions);
-
-        // Логируем успешную отправку
-        await saveEmailLog({
-            to: toEmail,
-            subject: mailOptions.subject,
-            messageId: info.messageId,
-            type: type,
-            status: 'sent',
-            sentAt: new Date(),
-        });
-
-        return {
-            success: true,
-            messageId: info.messageId,
-            message: 'Email отправлен успешно'
-        };
-
-    } catch (error) {
-        console.error('Error sending email:', error);
-
-        // Логируем ошибку
-        await saveEmailLog({
-            to: toEmail,
-            type: type,
-            status: 'error',
-            error: error.message,
-            sentAt: new Date(),
-        });
-
-        return {
-            success: false,
-            error: error.message
-        };
+  console.log('Sending email to:', toEmail, 'type:', type);
+  try {
+    // Проверяем, что calculationData существует
+    if (!calculationData) {
+      console.error('calculationData is missing');
+      return { success: false, error: 'Нет данных для письма' };
     }
+    const htmlContent = generateEmailTemplate(calculationData, type);
+    const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+    const mailOptions = {
+      from: `"Банковский калькулятор" <${fromEmail}>`,
+      to: toEmail,
+      subject: `Результаты расчёта (${type}) - Банковский калькулятор`,
+      html: htmlContent,
+      text: `Результаты расчёта ${type}.\nПожалуйста, используйте почтовый клиент, поддерживающий HTML.`,
+    };
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent, messageId:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error in sendCalculationEmail:', error);
+    return { success: false, error: error.message };
+  }
 };
 
 // Функция для сохранения логов отправки email (упрощенная версия)
@@ -232,8 +156,4 @@ const sendAdminNotification = async (subject, message) => {
     }
 };
 
-module.exports = {
-    sendCalculationEmail,
-    sendAdminNotification,
-    transporter
-};
+module.exports = { sendCalculationEmail, sendAdminNotification, transporter };

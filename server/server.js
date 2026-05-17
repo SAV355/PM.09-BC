@@ -5,7 +5,7 @@ const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
 const adminAuthRoutes = require('./routes/adminAuth');
 
-dotenv.config();
+//require('dotenv').config();  /* изменена для проверки, была « dotenv.config(); » */
 
 const app = express();
 

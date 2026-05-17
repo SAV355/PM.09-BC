@@ -14,27 +14,27 @@ import {
     // Alert,
     // CircularProgress,
 } from '@mui/material';
-import CreditCardIcon from '@mui/icons-material/CreditCard';
+import HomeIcon from '@mui/icons-material/Home';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import ScheduleIcon from '@mui/icons-material/Schedule';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import WarningIcon from '@mui/icons-material/Warning';
-import LocalAtmIcon from '@mui/icons-material/LocalAtm';
 // import SendIcon from '@mui/icons-material/Send';
 // import DownloadIcon from '@mui/icons-material/Download';
 import CalculatorLayout from './common/CalculatorLayout';
 import ResultCard from './common/ResultCard';
 import { formatCurrency } from '../utils/calculations';
 import { generateCalculationPDF } from '../utils/generatePDF';
-import { calculationsAPI } from '../services/api';
-import { emailAPI } from '../services/emailService';
+// import { emailAPI } from '../services/emailService';
 
-const ConsumerCreditCalculator = () => {
+const MortgageCalculator = () => {
     const [formData, setFormData] = useState({
-        loanAmount: 300000,
-        termYears: 3,
+        propertyCost: 5000000,
+        initialPayment: 1000000,
+        termYears: 20,
         email: '',
-        loanPurpose: 'consumer',
+        propertyType: 'primary',
         loanType: 'standard',
     });
 
@@ -45,30 +45,29 @@ const ConsumerCreditCalculator = () => {
 
     // Процентная ставка (зависит от типа кредита)
     const getInterestRate = () => {
-        const { loanPurpose, loanType } = formData;
-        let baseRate = 14.5; // Базовая ставка по ТЗ
+        const { propertyType, loanType } = formData;
+        let baseRate = 9.6; // Базовая ставка
 
-        // Корректировка по типу (цель кредита )
-        if (loanPurpose === 'education') baseRate -= 2;
-        if (loanPurpose === 'medical') baseRate -= 1;
-        if (loanPurpose === 'business') baseRate += 1;
-        if (loanType === 'express') baseRate += 3;
+        // Корректировака по (типу недвижки)
+        if (propertyType === 'secondary') baseRate += 0.5;
+        if (propertyType === 'commercial') baseRate += 1.5;
+        if (loanType === 'express') baseRate += 2;
 
         return baseRate;
     };
 
-    const calculateConsumerCredit = () => {
-        const { loanAmount, termYears } = formData;
+    const calculateMortgage = () => {
+        const { propertyCost, initialPayment, termYears } = formData;
         const annualRate = getInterestRate();
-
-        // Расчет типа кредита
+        //Расчет типа кредита 
+        const loanAmount = propertyCost - initialPayment;
         const monthlyRate = annualRate / 12 / 100;
         const totalPayments = termYears * 12;
         const totalRate = Math.pow(1 + monthlyRate, totalPayments);
         const monthlyPayment = loanAmount * monthlyRate * totalRate / (totalRate - 1);
         const totalPayment = monthlyPayment * totalPayments;
         const overpayment = totalPayment - loanAmount;
-        const requiredIncome = monthlyPayment * 2;
+        const requiredIncome = monthlyPayment * 2.5;
 
         return {
             loanAmount,
@@ -86,19 +85,28 @@ const ConsumerCreditCalculator = () => {
         const { name, value, type } = e.target;
 
         // Для email и текстовых полей сохраняет строку как есть
-        if (type === 'email' || type === 'text' || name === 'loanPurpose' || name === 'loanType') {
-            setFormData(prev => ({ ...prev, [name]: value, })); // email сохраняем как строку
+        if (type === 'email' || type === 'text' || name === 'propertyType' || name === 'loanType') {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value, // email сохраняем как строку, без parseFloat
+            }));
         } else {
             // Для числовых полей
             const numValue = parseFloat(value);
-            setFormData(prev => ({ ...prev, [name]: isNaN(numValue) ? 0 : numValue }));
+            setFormData(prev => ({
+                ...prev,
+                [name]: isNaN(numValue) ? 0 : numValue,
+            }));
         }
         setError('');
     };
 
-    // Обработчик слайдеров 
+    // Обработчик слайдеров (вынесен отдельно, чтобы был доступен)
     const handleSliderChange = (name) => (e, value) => {
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => ({
+            ...prev,
+            [name]: value,
+        }));
         setError('');
     };
 
@@ -107,14 +115,15 @@ const ConsumerCreditCalculator = () => {
             setLoading(true);
             setError('');
 
-            if (formData.loanAmount <= 0) {
+            const loanAmount = formData.propertyCost - formData.initialPayment;
+            if (loanAmount <= 0) {
                 setError('Сумма кредита должна быть больше 0');
                 return;
             }
 
-            const calculation = calculateConsumerCredit();
+            const calculation = calculateMortgage();
             setResults(calculation);
-            setSuccess('Расчет потребительского кредита выполнен успешно!');
+            setSuccess('Расчет ипотеки выполнен успешно!');
 
         } catch (err) {
             setError('Ошибка при расчете: ' + err.message);
@@ -123,37 +132,18 @@ const ConsumerCreditCalculator = () => {
         }
     };
 
-    const handleSendEmail = async () => {
-        const email = formData.email;
-        if (!email) {
+    const handleSendEmail = () => {
+        // Проверка на корректный email (простая проверка на @ и .)
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!formData.email) {
             setError('Введите email для отправки результатов');
             return;
         }
-        if (!emailAPI.validateEmail(email)) {
-            setError('Введите корректный email адрес');
+        if (!emailRegex.test(formData.email)) {
+            setError('Введите корректный email (например, name@domain.com)');
             return;
         }
-        if (!results) {
-            setError('Сначала выполните расчёт');
-            return;
-        }
-        
-        try {
-            setLoading(true);
-            const emailData = emailAPI.formatEmailData('consumer', formData, results, null);
-            const response = await calculationsAPI.sendEmail(emailData);
-            if (response.data.success) {
-                setSuccess('Результаты успешно отправлены на email!');
-                setTimeout(() => setSuccess(''), 5000);
-            } else {
-                setError(response.data.error || 'Ошибка при отправке email');
-            }
-        } catch (err) {
-            setError('Не удалось отправить email. Проверьте подключение к интернету.');
-            console.error('Send email error:', err);
-        } finally {
-            setLoading(false);
-        }
+        setSuccess('Результаты отправлены на email!');
     };
 
     const handleSavePDF = () => {
@@ -162,7 +152,7 @@ const ConsumerCreditCalculator = () => {
             return;
         }
         try {
-            generateCalculationPDF('consumer', formData, results, 'Калькулятор потребительского кредита');
+            generateCalculationPDF('mortgage', formData, results, 'Ипотечный калькулятор');
             setSuccess('PDF документ сгенерирован и сохранен!');
             setTimeout(() => setSuccess(''), 3000);
         } catch (err) {
@@ -170,62 +160,73 @@ const ConsumerCreditCalculator = () => {
         }
     };
 
+    const loanAmount = formData.propertyCost - formData.initialPayment;
     const annualRate = getInterestRate();
 
     // Левая панель - форма ввода
     const leftPanel = (
         <>
-            {/* Цель кредита */}
+            {/* Тип недвижимости */}
             <FormControl fullWidth margin="normal">
-                <InputLabel>Цель кредита</InputLabel>
+                <InputLabel>Тип недвижимости</InputLabel>
                 <Select
-                    name="loanPurpose"
-                    value={formData.loanPurpose}
+                    name="propertyType"
+                    value={formData.propertyType}
                     onChange={handleInputChange}
-                    label="Цель кредита"
+                    label="Тип недвижимости"
                 >
-                    <MenuItem value="consumer">Потребительские нужды</MenuItem>
-                    <MenuItem value="education">Образование</MenuItem>
-                    <MenuItem value="medical">Медицинские услуги</MenuItem>
-                    <MenuItem value="business">Бизнес</MenuItem>
-                    <MenuItem value="travel">Путешествие</MenuItem>
+                    <MenuItem value="primary">Первичное жилье</MenuItem>
+                    <MenuItem value="secondary">Вторичное жилье</MenuItem>
+                    <MenuItem value="commercial">Коммерческая недвижимость</MenuItem>
                 </Select>
             </FormControl>
 
             {/* Тип кредита */}
             <FormControl fullWidth margin="normal">
-                <InputLabel>Тип кредита</InputLabel>
+                <InputLabel>Тип ипотечного кредита</InputLabel>
                 <Select
                     name="loanType"
                     value={formData.loanType}
                     onChange={handleInputChange}
-                    label="Тип кредита"
+                    label="Тип ипотечного кредита"
                 >
-                    <MenuItem value="standard">Стандартный кредит</MenuItem>
-                    <MenuItem value="express">Экспресс-кредит</MenuItem>
-                    <MenuItem value="secured">Кредит под залог</MenuItem>
+                    <MenuItem value="standard">Стандартная ипотека</MenuItem>
+                    <MenuItem value="express">Экспресс-ипотека</MenuItem>
+                    <MenuItem value="family">Семейная ипотека</MenuItem>
                 </Select>
             </FormControl>
 
-            {/* Сумма кредита */}
+            {/* Стоимость недвижимости */}
+            <TextField
+                fullWidth
+                label="Стоимость недвижимости, ₽"
+                name="propertyCost"
+                type="number"
+                value={formData.propertyCost}
+                onChange={handleInputChange}
+                margin="normal"
+                InputProps={{
+                    inputProps: { min: 1000000, step: 100000 }
+                }}
+            />
+
+            {/* Первоначальный взнос */}
             <Box sx={{ mt: 3 }}>
                 <Typography gutterBottom>
-                    Сумма кредита: {formatCurrency(formData.loanAmount)}
+                    Первоначальный взнос: {formatCurrency(formData.initialPayment)}
                 </Typography>
                 <Slider
-                    value={formData.loanAmount}
-                    onChange={handleSliderChange('loanAmount')}
-                    min={10000}
-                    max={5000000}
-                    step={10000}
+                    value={formData.initialPayment}
+                    onChange={handleSliderChange('initialPayment')}
+                    min={0}
+                    max={formData.propertyCost}
+                    step={100000}
                     valueLabelDisplay="auto"
                     valueLabelFormat={(value) => formatCurrency(value)}
-                    marks={[
-                        { value: 100000, label: '100к' },
-                        { value: 1000000, label: '1 млн' },
-                        { value: 3000000, label: '3 млн' },
-                    ]}
                 />
+                <Typography variant="caption" color="text.secondary">
+                    Минимальный взнос: 15% ({formatCurrency(formData.propertyCost * 0.15)})
+                </Typography>
             </Box>
 
             {/* Срок кредита */}
@@ -237,14 +238,13 @@ const ConsumerCreditCalculator = () => {
                     value={formData.termYears}
                     onChange={handleSliderChange('termYears')}
                     min={1}
-                    max={7}
+                    max={30}
                     valueLabelDisplay="auto"
                     valueLabelFormat={(value) => `${value} лет`}
                     marks={[
-                        { value: 1, label: '1 год' },
-                        { value: 3, label: '3 года' },
                         { value: 5, label: '5 лет' },
-                        { value: 7, label: '7 лет' },
+                        { value: 15, label: '15 лет' },
+                        { value: 30, label: '30 лет' },
                     ]}
                 />
             </Box>
@@ -260,6 +260,7 @@ const ConsumerCreditCalculator = () => {
                 margin="normal"
                 sx={{ mt: 3 }}
                 placeholder="your@email.com"
+                helperText="Введите корректный email для получения результатов"
             />
         </>
     );
@@ -276,7 +277,7 @@ const ConsumerCreditCalculator = () => {
                                 Сумма кредита:
                             </Typography>
                             <Typography variant="h6">
-                                {formatCurrency(formData.loanAmount)}
+                                {formatCurrency(loanAmount)}
                             </Typography>
                         </Grid>
                         <Grid item xs={6}>
@@ -289,13 +290,11 @@ const ConsumerCreditCalculator = () => {
                         </Grid>
                         <Grid item xs={6}>
                             <Typography variant="body2" color="text.secondary">
-                                Цель кредита:
+                                Тип недвижимости:
                             </Typography>
                             <Typography variant="body1">
-                                {formData.loanPurpose === 'consumer' ? 'Потребительские нужды' :
-                                    formData.loanPurpose === 'education' ? 'Образование' :
-                                        formData.loanPurpose === 'medical' ? 'Медицинские услуги' :
-                                            formData.loanPurpose === 'business' ? 'Бизнес' : 'Путешествие'}
+                                {formData.propertyType === 'primary' ? 'Первичная' :
+                                    formData.propertyType === 'secondary' ? 'Вторичная' : 'Коммерческая'}
                             </Typography>
                         </Grid>
                         <Grid item xs={6}>
@@ -352,20 +351,20 @@ const ConsumerCreditCalculator = () => {
                             value={formatCurrency(results.requiredIncome)}
                             color="success"
                             size="large"
-                            subtitle="ежемесячный платеж × 2"
+                            subtitle="ежемесячный платеж × 2.5"
                             icon={WarningIcon}
                         />
                     </Grid>
 
-                    {/* Эффективная ставка */}
+                    {/* Срок кредита */}
                     <Grid item xs={12}>
                         <ResultCard
-                            title="Эффективная ставка"
-                            value={`${(annualRate * 1.1).toFixed(1)}%`}
+                            title="Общий срок кредита"
+                            value={`${results.termYears} лет`}
                             color="secondary"
                             size="medium"
-                            subtitle="с учетом всех комиссий"
-                            icon={LocalAtmIcon}
+                            subtitle={`${results.termYears * 12} месяцев`}
+                            icon={ScheduleIcon}
                         />
                     </Grid>
                 </Grid>
@@ -384,12 +383,12 @@ const ConsumerCreditCalculator = () => {
                     p: 4,
                     textAlign: 'center'
                 }}>
-                    <CreditCardIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+                    <HomeIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
                     <Typography variant="h6" color="text.secondary" gutterBottom>
-                        Введите параметры кредита
+                        Введите параметры ипотеки
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Укажите сумму, срок и цель кредита для расчета
+                        Укажите стоимость недвижимости, первоначальный взнос и срок кредита для расчета
                     </Typography>
                 </Box>
             )}
@@ -398,9 +397,9 @@ const ConsumerCreditCalculator = () => {
 
     return (
         <CalculatorLayout
-            title="Калькулятор потребительского кредита"
-            icon={CreditCardIcon}
-            color="#8B5CF6"
+            title="Ипотечный калькулятор"
+            icon={HomeIcon}
+            color="#1E3A8A"
             leftPanel={leftPanel}
             rightPanel={rightPanel}
             error={error}
@@ -409,9 +408,9 @@ const ConsumerCreditCalculator = () => {
             onCalculate={handleCalculate}
             onSendEmail={handleSendEmail}
             onSavePDF={handleSavePDF}
-            canCalculate={formData.loanAmount > 0}
+            canCalculate={loanAmount > 0}
         />
     );
 };
 
-export default ConsumerCreditCalculator;
+export default MortgageCalculator;
