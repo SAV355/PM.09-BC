@@ -1,0 +1,44 @@
+# dependencies (игнорим папки зависимостей)
+node_modules/
+client/node_modules/
+server/node_modules/
+.pnpm-debug.log*
+
+# caches (игнорим папки тайнами, что бы их не коммитить :)) 
+**/.cache/
+client/node_modules/.cache/
+.eslintcache
+
+# env files (игнорим файлы окружения «secrets :) »)
+.env
+*.env
+!.env.example
+client/.env
+server/.env
+
+# build outputs (игнорим папки с выходными данными)
+dist/
+build/
+out/
+#client/dist/
+#client/build/
+#server/dist/
+
+# logs (Логи)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS / IDE (игнорим папки создоваемые операционной системой и средой разработки)
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# foulder testing
+Testing
+Testing/Compared's
